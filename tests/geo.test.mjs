@@ -1,8 +1,10 @@
+import {selectPopulation} from '../src/selectors.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {GLOBAL_BOUNDS, rankedRegions, validateBounds, contained, displayCells} from '../src/geo.js';
+import {GLOBAL_BOUNDS, validateBounds, contained, displayCells} from '../src/geo.js';
 const regions = JSON.parse(readFileSync(new URL('../data/regions.json', import.meta.url))).regions;
+const rankedRegions = (regions, state) => { const p = selectPopulation(regions, state); return {rows: p.matching, excluded: p.excluded}; };
 const state = {bounds: GLOBAL_BOUNDS, seasonA: 'DJF', seasonB: 'JJA', rankDirection: 'descending', threshold: 0, search: ''};
 test('all regions rank once in signed order, including equal season comparison', () => {
   const {rows} = rankedRegions(regions, state);
@@ -10,6 +12,9 @@ test('all regions rank once in signed order, including equal season comparison',
   assert.equal(new Set(rows.map(d => d.id)).size, 2592);
   assert.ok(rows.every((d, i) => !i || rows[i-1].difference >= d.difference));
   assert.ok(rows.some(d => d.difference > 0)); assert.ok(rows.some(d => d.difference < 0));
+  const swapped = rankedRegions(regions, {...state, seasonA: state.seasonB, seasonB: state.seasonA}).rows;
+  const swappedById = new Map(swapped.map(row => [row.id, row.difference]));
+  assert.ok(rows.every(row => swappedById.get(row.id) === -row.difference));
   assert.ok(rankedRegions(regions, {...state, seasonB: 'DJF'}).rows.every(d => d.difference === 0));
   const ascending = rankedRegions(regions, {...state, rankDirection: 'ascending'}).rows;
   assert.ok(ascending.every((d, i) => !i || ascending[i-1].difference <= d.difference));

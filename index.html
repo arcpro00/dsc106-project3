@@ -1,52 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Explore how seasonal warming differs across the globe using GFDL-ESM4 historical climate data.">
-  <title>Seasonality · Climate Explorer</title>
-  <link rel="stylesheet" href="./style.css">
-  <script defer src="./vendor/d3.v7.min.js"></script>
-  <script type="module" src="./src/main.js"></script>
-</head>
-<body>
-<header><a class="brand" href="./"><span class="brand-mark">◒</span> CLIMATE / LAB</a><span class="header-note">GFDL-ESM4 <span class="dot"></span> HISTORICAL SIMULATION</span></header>
-<main>
-  <section class="intro"><div><p class="eyebrow">A GEOGRAPHY OF CHANGE · 1950—2014</p><h1>Warming has a season.</h1><p class="deck">Compare seasonal warming rates. Find where the seasons are changing at different speeds.</p></div><div class="study-note"><span>01 / SEASONALITY EXPLORER</span><p>One planet. Four seasons.<br>2,592 regions to explore.</p></div></section>
-  <div id="status" role="status" aria-live="polite">Loading climate observations…</div>
-  <div id="error" role="alert" hidden></div>
-  <section class="comparison controls" aria-label="Season comparison">
-    <div class="control-heading"><span class="section-index">01</span><div><h2>Choose a comparison</h2><p>Linear warming trends, 1950–2014</p></div></div>
-    <label>SEASON A<select id="seasonA"><option value="DJF">DJF · Dec–Feb</option><option value="MAM">MAM · Mar–May</option><option value="JJA">JJA · Jun–Aug</option><option value="SON">SON · Sep–Nov</option></select></label>
-    <button id="swap" class="icon-button" aria-label="Swap seasons">⇄</button>
-    <label>SEASON B<select id="seasonB"><option value="DJF">DJF · Dec–Feb</option><option value="MAM">MAM · Mar–May</option><option value="JJA" selected>JJA · Jun–Aug</option><option value="SON">SON · Sep–Nov</option></select></label>
-    <p class="formula"><span class="warm">A</span> − <span class="cool">B</span><small>Difference in °C / decade</small></p>
-  </section>
-  <section class="geography-controls" aria-label="Geographic bounds">
-    <div><strong>Geographic extent</strong><span>Complete 5° blocks · non-crossing bounds</span></div>
-    <form id="bounds-form"><label>West<input id="lonMin" type="number" min="-180" max="175" step="5" value="-180" required></label><label>East<input id="lonMax" type="number" min="-175" max="180" step="5" value="180" required></label><label>South<input id="latMin" type="number" min="-90" max="85" step="5" value="-90" required></label><label>North<input id="latMax" type="number" min="-85" max="90" step="5" value="90" required></label><button type="submit" class="primary">Apply bounds</button><button type="button" id="reset">Reset globe</button></form>
-    <p id="bounds-error" role="alert" hidden></p>
-  </section>
-  <div class="views">
-    <section class="panel map-panel" aria-labelledby="map-heading">
-      <div class="panel-heading"><div><p class="eyebrow">02 / SPATIAL VIEW</p><h2 id="map-heading">The global picture</h2></div><span id="resolution" class="badge">5° overview</span></div>
-      <div class="map-controls controls"><label>MAP LAYER<select id="layer"><option value="warming_rate">Warming rate</option><option value="anomaly">Temperature anomaly</option><option value="temperature">Temperature</option></select></label><label>SEASON<select id="mapSeason"><option>DJF</option><option>MAM</option><option>JJA</option><option>SON</option></select></label><label>YEAR<select id="year" disabled></select></label><label class="check"><input id="follow" type="checkbox" checked> Follow season A</label></div>
-      <p id="map-caption" class="chart-caption"></p>
-      <div class="map-container"><svg id="map" role="img" aria-label="Climate map with selectable five degree geographic blocks"></svg></div>
-      <div class="legend-row"><span id="legend-unit">°C / decade</span><svg id="legend" aria-label="Map color legend" role="img"></svg></div>
-      <details class="appearance"><summary>Map appearance</summary><div class="appearance-controls"><label>Overlay opacity <input id="opacity" type="range" min="0" max="1" step="0.05" value="0.55"></label><label>Land<input id="land" type="color" value="#d8dfd3"></label><label>Ocean<input id="ocean" type="color" value="#dcecf5"></label><label>Coastline<input id="coastline" type="color" value="#596a6e"></label><label>Selection<input id="selection" type="color" value="#242424"></label></div></details>
-      <div id="selection-detail" class="selection-detail" aria-live="polite"><span class="selection-icon">⌖</span><p>Select a ranked region or a map cell to inspect its seasonal rates.</p></div><button id="clear-selection" hidden>Clear selection</button>
-    </section>
-    <section class="panel ranking-panel" aria-labelledby="rank-heading">
-      <div class="panel-heading"><div><p class="eyebrow">03 / REGIONAL RANKING</p><h2 id="rank-heading">Where seasons diverge</h2></div><span class="badge">5° × 5° regions</span></div>
-      <p id="rank-caption" class="chart-caption">Season A − Season B · 1950–2014 trends</p>
-      <div class="ranking-controls controls"><label class="search-label">FIND A REGION<input id="search" type="search" placeholder="Coordinates or ID, e.g. r30_c36"></label><label>ORDER<select id="rankDirection"><option value="descending">Highest first</option><option value="ascending">Lowest first</option></select></label></div>
-      <label class="threshold-label">Min. |difference| <input id="threshold" type="number" value="0" step="0.01" min="0" max="10"> °C/decade</label>
-      <div class="ranking-key"><span><i class="cool-bg"></i> B warms faster</span><span>A warms faster <i class="warm-bg"></i></span></div>
-      <div class="ranking-scroll"><svg id="rank-axis" aria-hidden="true"></svg><div id="rank-viewport" tabindex="0" aria-label="Scrollable ranked regions"><svg id="ranking" role="group" aria-label="Seasonal warming differences by region"></svg></div></div>
-      <p id="region-count" class="region-count" aria-live="polite"></p><p id="empty" hidden>No regions match these filters.</p>
-    </section>
-  </div>
-  <footer><div><strong>Read the difference.</strong><p>Positive values mean season A warms faster; negative values mean season B warms faster. Ranking always compares 1950–2014 trends, regardless of the map year.</p></div><div><strong>About the data</strong><p>GFDL-ESM4 · r2i1p1f1 · historical simulation.<br>Cosine-latitude weighted regional means. Anomaly baseline: 1951–1980. DJF assigns December to the following year. Geography: Natural Earth 1:110m.</p></div></footer>
-</main>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Seasonal warming through time</title><link rel="stylesheet" href="./style.css"><script defer src="./vendor/d3.v7.min.js"></script><script type="module" src="./src/main.js"></script></head><body>
+<header><a class="brand" href="./">◒ CLIMATE / LAB</a><span>GFDL-ESM4 · 1950–2014</span></header><main>
+<section class="intro"><div><p class="eyebrow">A GEOGRAPHY OF CHANGE</p><h1>Warming has a season.</h1><p class="deck">Where are seasonal warming rates most uneven, and how have those differences emerged over time?</p></div></section>
+<p id="status" role="status" aria-live="polite">Loading regional anomaly histories and trend calculations…</p>
+<section class="comparison controls"><label>SEASON A<select id="seasonA"><option value="DJF">Winter (Dec–Feb)</option><option value="MAM">Spring (Mar–May)</option><option value="JJA">Summer (Jun–Aug)</option><option value="SON">Fall (Sep–Nov)</option></select></label><label>SEASON B<select id="seasonB"><option value="DJF">Winter (Dec–Feb)</option><option value="MAM">Spring (Mar–May)</option><option value="JJA" selected>Summer (Jun–Aug)</option><option value="SON">Fall (Sep–Nov)</option></select></label><label><span><input id="full-period" type="checkbox" checked> Full period (1950–2014)</span></label><label class="period-slider">MOVING WINDOW END YEAR: <output id="end-value" for="end-year">2014</output><input id="end-year" type="range" min="1979" max="2014" step="1" value="2014" aria-label="End year of 30-year analysis window"></label></section>
+<p id="period-label" aria-live="polite">Analysis period: 1950–2014 (65 years)</p><p class="interaction-hint">Move the slider to fit a 30-year window. Adjacent windows overlap; changes are not independent observations. Season names use Northern Hemisphere month conventions globally.</p>
+<div class="views"><section class="panel"><p class="eyebrow">01 / SPATIAL CONTRAST</p><h2>Where are seasonal warming rates most uneven?</h2><svg id="map" role="img" aria-label="Selectable map of signed regional seasonal trend differences"></svg><div class="legend-row"><span>°C/decade</span><svg id="legend" role="img" aria-label="Signed trend difference legend"></svg></div><p id="legend-caption" class="interaction-hint"></p><p class="interaction-hint">Click a 5° × 5° block to inspect its history. Map colors compare slopes, not absolute warming or cooling.</p><details class="appearance"><summary>Map appearance</summary><div class="appearance-controls"><label>Opacity<input id="opacity" type="range" min="0" max="1" step=".05" value=".8"></label><label>Land<input id="land" type="color" value="#d8dfd3"></label><label>Ocean<input id="ocean" type="color" value="#dcecf5"></label><label>Coastline<input id="coastline" type="color" value="#596a6e"></label><label>Selection<input id="selection" type="color" value="#242424"></label></div></details></section>
+<section class="panel"><p class="eyebrow">02 / TEMPORAL CONTEXT</p><h2>How did the difference emerge over time?</h2><p id="context">Global context</p><button id="clear-selection" hidden>Return to global context</button><svg id="temporal" role="img" aria-label="Full seasonal anomaly histories with analysis window shading and fitted trends"></svg><p id="summary" aria-live="polite"></p><p class="interaction-hint">Thin lines show seasonal anomalies across 1950–2014. Thick segments fit the shaded analysis period. The target contrast is the difference in slopes, not the vertical separation of the lines.</p></section></div>
+<footer><p>Each map color is A − B for two fitted seasonal trends in the selected period; the lines show seasonal anomalies relative to 1951–1980. Global context uses cosine-latitude area weighting. Winter assigns December to the following year. Geography: Natural Earth. These patterns describe change without establishing causes.</p></footer></main></body></html>

@@ -1,3 +1,4 @@
+import {differenceGrid} from './comparison.js';
 const root = new URL('../', import.meta.url);
 const cache = new Map();
 function fetchJSON(path) {
@@ -21,3 +22,31 @@ export function loadGrid({variable, season, year}) {
     return grid;
   });
 }
+
+const comparisons = new Map();
+export function loadComparisonGrid(seasonA, seasonB) {
+  const key = `${seasonA}:${seasonB}`;
+  if (!comparisons.has(key)) {
+    const request = Promise.all([
+      loadGrid({variable: 'warming_rate', season: seasonA}),
+      loadGrid({variable: 'warming_rate', season: seasonB})
+    ]).then(([a, b]) => differenceGrid(a, b)).catch(error => { comparisons.delete(key); throw error; });
+    comparisons.set(key, request);
+    if (comparisons.size > 6) comparisons.delete(comparisons.keys().next().value);
+  }
+  return comparisons.get(key);
+}
+
+export function loadRegionTimeSeries(id, season) {
+  const match = /^r(\d+)_c(\d+)$/.exec(id);
+  if (!match || Number(match[1]) > 35 || Number(match[2]) > 71) return Promise.reject(new Error('Invalid region ID.'));
+  const band = Number(match[1]);
+  return fetchJSON(`data/timeseries/${season}_band_${String(band).padStart(2, '0')}.json`).then(payload => {
+    const values = payload.regions[id];
+    if (payload.season !== season || payload.band !== band || payload.years.length !== 65 || !values || values.length !== 65) throw new Error('Invalid regional anomaly history.');
+    return {season, years: payload.years, values};
+  });
+}
+
+export const loadRegionalAnomalies = () => fetchJSON('data/regional_anomalies.json');
+export const loadGlobalAnomalies = () => fetchJSON('data/global_anomalies.json');

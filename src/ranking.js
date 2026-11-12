@@ -1,7 +1,8 @@
-import {finite, rankedRegions, regionLabel} from './geo.js';
+import {seasonName} from './seasons.js';
+import {finite, regionLabel} from './geo.js';
 import {createTooltip} from './tooltip.js';
 const d3 = window.d3;
-export function createRankingChart({viewport, svg, axis, onSelectRegion, onSummary}) {
+export function createRankingChart({viewport, svg, axis, onSelectRegion, onRegionHover}) {
   const root = d3.select(svg), axisRoot = d3.select(axis);
   const tooltip = createTooltip();
   const rowHeight = 35, width = 690, left = 230, right = 622;
@@ -22,9 +23,10 @@ export function createRankingChart({viewport, svg, axis, onSelectRegion, onSumma
       g.append('text').attr('class', 'row-label').attr('x', 10).attr('y', 23);
       g.append('text').attr('class', 'row-value').attr('x', width-12).attr('y', 23).attr('text-anchor', 'end');
       return g;
-    }).attr('transform', d => `translate(0,${d.index*rowHeight})`).attr('aria-label', d => `${regionLabel(d)}: ${d3.format('+.3f')(d.difference)} degrees C per decade`).attr('aria-pressed', d => d.id === current.selectedRegionId).classed('selected', d => d.id === current.selectedRegionId)
+    }).attr('transform', d => `translate(0,${d.index*rowHeight})`).attr('aria-label', d => `${regionLabel(d)}: ${d3.format('+.3f')(d.difference)} degrees C per decade`).attr('aria-pressed', d => d.id === current.selectedRegionId).classed('selected', d => d.id === current.selectedRegionId).classed('hovered', d => d.id === current.hoveredRegionId)
       .on('click', (_, d) => onSelectRegion(d.id)).on('keydown', (event, d) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectRegion(d.id); } })
-      .on('pointermove', (event, d) => tooltip.show(event, [regionLabel(d), `${d.id} · ${current.seasonA}: ${d.rates[current.seasonA].toFixed(4)} °C/decade`, `${current.seasonB}: ${d.rates[current.seasonB].toFixed(4)} °C/decade`, `A − B: ${d3.format('+.4f')(d.difference)} °C/decade`])).on('pointerleave', () => tooltip.hide());
+      .on('pointerenter', (_, d) => onRegionHover(d.id)).on('focus', (_, d) => onRegionHover(d.id)).on('blur', () => onRegionHover(null))
+      .on('pointermove', (event, d) => tooltip.show(event, [regionLabel(d), `${d.id} · ${seasonName(current.seasonA)}: ${d.rates[current.seasonA].toFixed(4)} °C/decade`, `${seasonName(current.seasonB)}: ${d.rates[current.seasonB].toFixed(4)} °C/decade`, `A − B: ${d3.format('+.4f')(d.difference)} °C/decade`])).on('pointerleave', () => { tooltip.hide(); onRegionHover(null); });
     row.select('.bar').attr('x', d => x(Math.min(0, d.difference))).attr('width', d => Math.abs(x(d.difference)-x(0))).attr('fill', d => d.difference >= 0 ? '#b75b39' : '#397f99');
     row.select('.row-label').text(d => regionLabel(d));
     row.select('.row-value').text(d => d3.format('+.3f')(d.difference));
@@ -38,19 +40,18 @@ export function createRankingChart({viewport, svg, axis, onSelectRegion, onSumma
   observer.observe(viewport);
   let priorFilter;
   return {
+    setHovered(id) { if (current) current = {...current, hoveredRegionId: id}; group.selectAll('.rank-row').classed('hovered', row => row.id === id); },
     update(state) {
       current = state;
-      const filterKey = JSON.stringify([state.bounds, state.seasonA, state.seasonB, state.rankDirection, state.search, state.threshold]);
+      const filterKey = JSON.stringify([state.bounds, state.seasonA, state.seasonB, state.rankDirection, state.search, state.threshold, state.preset, state.histogramRange]);
       if (priorFilter !== filterKey) { viewport.scrollTop = 0; priorFilter = filterKey; }
-      const result = rankedRegions(state.regions, state);
-      rows = result.rows;
-      const extent = d3.max(state.regions, d => finite(d.rates[state.seasonA]) && finite(d.rates[state.seasonB]) ? Math.abs(d.rates[state.seasonA]-d.rates[state.seasonB]) : 0) || 0.1;
+      rows = state.matching;
+      const extent = d3.max(state.global, d => finite(d.rates[state.seasonA]) && finite(d.rates[state.seasonB]) ? Math.abs(d.rates[state.seasonA]-d.rates[state.seasonB]) : 0) || 0.1;
       x = d3.scaleLinear().domain([-extent, extent]).nice().range([left, right]);
       const height = Math.max(rows.length*rowHeight, 1);
       root.attr('height', height*pixelRatio()).attr('viewBox', `0 0 ${width} ${height}`);
       zero.attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', height);
       axisRoot.selectAll('g').data([null]).join('g').attr('transform', 'translate(0,28)').call(d3.axisTop(x).ticks(5).tickSize(4));
-      onSummary(result);
       draw();
     },
     destroy() { observer.disconnect(); viewport.removeEventListener('scroll', draw); tooltip.destroy(); root.selectAll('*').remove(); }

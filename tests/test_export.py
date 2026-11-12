@@ -24,7 +24,7 @@ class ExportTests(unittest.TestCase):
         metadata = read(ROOT / 'data/metadata.json')
         self.assertEqual(metadata['yearRange'], [1950, 2014])
         self.assertEqual(metadata['seasons'], ['DJF', 'MAM', 'JJA', 'SON'])
-        files = list((ROOT / 'data').rglob('*.json'))
+        files = [path for path in (ROOT / 'data').rglob('*.json') if 'timeseries' not in path.parts and path.name not in ('regional_anomalies.json', 'global_anomalies.json')]
         self.assertEqual(len(files), 526)
         for path in files:
             payload = read(path)

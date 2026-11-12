@@ -1,63 +1,38 @@
-# Climate Seasonality Explorer
+# Seasonal warming through time
 
-A buildless D3/SVG explorer of GFDL-ESM4 historical temperatures and seasonal warming. Open the repository with VS Code Live Server, or run:
+Static HTML/CSS/vanilla JavaScript with D3 7.9.0 SVG rendering. Serve with VS Code Live Server or `python3 -m http.server 8000`.
 
-```sh
-python3 -m http.server 8000
-```
+Exactly two analytical views are active: a regional trend-difference map and a persistent seasonal anomaly chart. Select seasons, click a 5° region, and move the end-year slider through inclusive 30-year windows (1979 = 1950–1979; 2014 = 1985–2014). Full-period mode starts at 1950–2014 and preserves the last moving-window endpoint. Dragging the slider activates moving mode. Without a selected region, the temporal chart explicitly shows global area-weighted context.
 
-Visit `http://localhost:8000`. Opening `index.html` using `file://` will not work because browsers restrict JSON fetches. D3 7.9.0 is vendored; fonts fall back to system fonts when offline.
+Map fills, map tooltips and chart fits use one OLS implementation on the same regional histories. Slopes are °C/decade. The map domain spans all 36 moving windows plus the full period for the chosen pair, so it never rescales as the slider moves. Anomaly histories remain visible for all 65 years; shading and thick fitted segments show the analysis window. The difference in slopes is distinct from the vertical separation of anomalies. Season names use Northern Hemisphere month conventions everywhere.
 
-## Behavior
+## Modules
 
-- Compare any two of DJF, MAM, JJA, SON. Ranking uses **signed A − B warming rates over 1950–2014**, ordered descending by default, with a symmetric global season-pair scale.
-- Enter geographic bounds on 5° boundaries. Both views use the same extent; ranking includes fully contained blocks. Antimeridian-crossing custom extents are rejected.
-- Click a chart row or map cell to select a 5° region without changing the viewport. Apply bounds outside the selection to clear it. All four seasonal rates are shown below the map.
-- The map offers warming rate, temperature, and anomaly. Temperature/anomaly use the selected year; trend maps ignore year. Follow season A or choose an independent map season.
-- Map color domains are fixed across all seasons/years and geographic filters. Land, ocean, coastlines, selection color, and climate opacity are independently configurable. Missing cells are transparent.
-- Broad extents use area-weighted 5° display cells. Extents of 3,600 square degrees or less use native 1° × 1.25° cells. Rankings always use the original 5° block aggregation.
-- Ranking retains all eligible records but renders only the scroll window plus a buffer. Rows support Enter/Space selection and pointer tooltips.
+- `src/main.js`: shared state and two-view coordination; requestAnimationFrame slider scheduling.
+- `src/trends.js`: pure period/OLS helpers, cached regional rate arrays, pair-wide color domains.
+- `src/map.js`: D3 geographic paths, regional fills, selection, tooltip and legend.
+- `src/temporal-chart.js`: D3 histories, shaded period and fitted trend segments.
+- `src/data.js`: cached relative asset loading, including compatibility loaders.
+- `src/state.js`, `src/geo.js`, `src/seasons.js`, `src/tooltip.js`: shared utilities.
 
-## Separation of concerns
+Legacy ranking, histogram, selectors and detail modules remain on disk for compatibility/tests but are not imported by the active application. Geographic brushing/filtering is removed from this workflow; the legacy snapping helper now rejects sub-cell brushes safely.
 
-| File | Responsibility |
-| --- | --- |
-| `src/main.js` | Application orchestration, control binding, linked selection, stale-request protection |
-| `src/state.js` | Shared state and subscriptions |
-| `src/data.js` | Relative asset URLs, schema checks, bounded promise fetch cache |
-| `src/geo.js` | Pure coordinate, bounds, ranking, and display aggregation functions |
-| `src/map.js` | D3 projection, geographic/climate layers, legend, map selection |
-| `src/ranking.js` | D3 diverging bars, fixed axis, virtual rows, chart selection |
-| `src/tooltip.js` | Safe shared tooltip DOM utility |
-| `scripts/export_climate_json.py` | Offline source validation, climate export, Natural Earth conversion |
+## Export
 
-The map and ranking do not import one another. All changes travel through shared application state. Only the data loader fetches climate assets. There is no runtime Python, backend, bundler, or Node dependency.
+Run `uv run python scripts/export_climate_json.py` for base assets and geography, then `uv run python scripts/export_exploration_data.py` for regional bands and the new regional/global anomaly bundles. The latter reads the original NetCDF, uses cosine-latitude weights and finite-value masks, and exports all four seasons and 65 years in stable region order. Regional anomalies are rounded to three decimals; global anomalies to five. Global means are calculated over native cells, not unweighted regional means. The current source has complete finite coverage for every season/year.
 
-## Re-export data
+The map loads `data/regional_anomalies.json` once rather than fetching native annual grids or band files on slider changes. The chart uses this same bundle plus `data/global_anomalies.json` for its startup context.
 
-The source `cmip6_processed.nc` and `110m_physical/` shapefiles must be available locally. Install offline preprocessing dependencies with `uv sync`, then:
+## Validation and measured limits
 
-```sh
-uv run python scripts/export_climate_json.py
-```
+Run `node --test tests/*.test.mjs` and `uv run python -m unittest discover -s tests -p 'test_*.py'`.
 
-The script validates dimensions, seasons, year range, units, and coordinates; normalizes longitude to ascending −179.375°…179.375°; and exports 526 compact JSON files (~181 MB total). Rates are rounded to five decimals, temperature/anomaly to three, after full-precision weighted aggregation. Non-finite values become JSON null. All 2,592 regions have deterministic IDs and explicit `[west,east,south,north]` bounds. Files contain no precomputed season-pair differences.
+Measured maximum full-period discrepancy from legacy regional rates: **0.000074668 °C/decade**, below the explicit 0.0002 tolerance, consistent with anomaly rounding. Every regional seasonal slope is finite for all supported windows. All 260 global anomalies were independently checked against native-cell weighting within 0.0000051 °C.
 
-`data/metadata.json` defines the schema, grid, provenance, periods, units, and stable color domains. `data/regions.json` contains four seasonal rates per region. `data/warming_rate/SEASON.json` and `data/{temperature,anomaly}/SEASON/YEAR.json` contain row-major 51,840-value native grids. The browser fetches only the selected grid and keeps at most 16 cached promises.
+A local Node measurement took ~238 ms to build the initial Winter/Summer pair domain and slope cache; retrieving all 36 cached seasonal pairs took ~0.04 ms. These measure numerical work, not browser rendering, network transfer or mobile performance.
 
-Natural Earth land and coastline GeoJSON are generated from the supplied 1:110m shapefiles. No country border layer is included because the supplied physical dataset does not include national boundaries.
-
-## Validation
-
-```sh
-uv run python -m unittest discover -s tests -p 'test_*.py'
-node --test tests/geo.test.mjs
-```
-
-Python checks every JSON payload and independently verifies sampled regional means and native coordinate alignment against NetCDF. Node checks signed ordering, zero differences, missing data, bounds, search, thresholds, and display aggregation. Node is only needed for these development checks.
+Browser checks remain manual: desktop/mobile labels, mouse/touch/keyboard slider, rapid slider movement, selection persistence, global context reset, stable legend endpoints and fitted segments. No live deployment or browser performance claim is made.
 
 ## GitHub Pages
 
-Set **Settings → Pages → Source → GitHub Actions**. The included workflow deploys pushes to `main`, or can be run manually. If your default branch differs, update `.github/workflows/pages.yml`.
-
-The workflow stages only `index.html`, `style.css`, `src/`, `data/`, `geography/`, and `vendor/`, excluding NetCDF, raw shapefiles, virtual environments, scripts, and preprocessing dependencies. All application assets use relative URLs, so repository subpaths work. Commit the generated static data before deploying. The uncompressed export totals ~181 MB; the largest JSON asset is under 0.5 MB. No remote push or deployment is performed by the implementation itself.
+The existing Actions workflow stages `index.html`, `style.css`, `src`, `data`, `geography`, and `vendor`, including both new bundles. Configure Pages to use GitHub Actions. Relative module/asset URLs support repository subpaths. No backend or Node build is needed. No push or deployment is performed automatically by local implementation work.

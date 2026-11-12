@@ -18,21 +18,6 @@ export function regionLabel(region) {
   const [w, e, s, n] = region.bounds;
   return `${coordinate(s, true)}–${coordinate(n, true)} · ${coordinate(w)}–${coordinate(e)}`;
 }
-export function rankedRegions(regions, state) {
-  let excluded = 0;
-  const rows = [];
-  for (const region of regions) {
-    if (!contained(region, state.bounds)) continue;
-    const a = region.rates[state.seasonA], b = region.rates[state.seasonB];
-    if (!finite(a) || !finite(b)) { excluded++; continue; }
-    const difference = a - b;
-    if (Math.abs(difference) < state.threshold) continue;
-    if (state.search && !`${region.id} ${regionLabel(region)}`.toLowerCase().includes(state.search.toLowerCase().trim())) continue;
-    rows.push({...region, difference});
-  }
-  rows.sort((a, b) => (state.rankDirection === 'ascending' ? a.difference - b.difference : b.difference - a.difference) || a.id.localeCompare(b.id));
-  return {rows, excluded};
-}
 export function displayCells(grid, metadata, bounds) {
   const g = metadata.grid;
   const coarse = (bounds.lonMax - bounds.lonMin) * (bounds.latMax - bounds.latMin) > 3600;
@@ -56,4 +41,25 @@ export function displayCells(grid, metadata, bounds) {
     }
   }
   return {cells, coarse};
+}
+
+// Longitude is half-open at +180; pointer hits on the outside edge are clamped inward.
+export function regionIdAt(lon, lat) {
+  if (!finite(lon) || !finite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) return null;
+  return `r${Math.min(35, Math.floor((lat + 90) / 5))}_c${Math.min(71, Math.floor((lon + 180) / 5))}`;
+}
+export function geographicBrushBounds(selection, invert) {
+  if (!selection) return null;
+  const [[x0, y0], [x1, y1]] = selection;
+  const [west, north] = invert([x0, y0]), [east, south] = invert([x1, y1]);
+  // Snap inward: a partially brushed block is excluded.
+  const epsilon = 1e-7;
+  const bounds = {
+    lonMin: Math.max(-180, Math.ceil((west - epsilon) / 5) * 5),
+    lonMax: Math.min(180, Math.floor((east + epsilon) / 5) * 5),
+    latMin: Math.max(-90, Math.ceil((south - epsilon) / 5) * 5),
+    latMax: Math.min(90, Math.floor((north + epsilon) / 5) * 5)
+  };
+  if (bounds.lonMin >= bounds.lonMax || bounds.latMin >= bounds.latMax) return null;
+  return bounds;
 }
