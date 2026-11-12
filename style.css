@@ -649,3 +649,42 @@ footer p {
   font-size: 10px;
   font-weight: 500;
 }
+
+/* Website navigations */
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #dce2df;
+  border-radius: 10px;
+  background: #f0f2ef;
+}
+
+.site-nav a {
+  display: inline-block;
+  padding: 9px 18px;
+  border-radius: 7px;
+  color: #53625b;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Hover-over effect */
+.site-nav a:hover {
+  background: #dce5df;
+  color: #21342b;
+}
+
+/* Currently selected page */
+.site-nav a.active {
+  background: #304b3e;
+  color: #ffffff;
+}
+
+/* Hovering over the active page */
+.site-nav a.active:hover {
+  background: #3d6050;
+}
