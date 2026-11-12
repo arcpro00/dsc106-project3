@@ -1,45 +1,201 @@
-import {createState} from './state.js';
-import {loadMetadata,loadRegions,loadGeography,loadRegionalAnomalies,loadGlobalAnomalies} from './data.js';
-import {createTrends,periodFor} from './trends.js';
-import {createMap} from './map.js';
-import {createTemporalChart} from './temporal-chart.js';
-import {seasonName} from './seasons.js';
-import {regionLabel} from './geo.js';
-const $=id=>document.getElementById(id);
-const store=createState({seasonA:'DJF',seasonB:'JJA',periodMode:'full',windowEndYear:2014,windowYears:30,selectedRegionId:null,overlayOpacity:.8,colors:{land:'#d8dfd3',ocean:'#dcecf5',coastline:'#596a6e',selection:'#242424'}});
-async function init(){
- try {
- const [metadata,regions,geography,bundle,global]=await Promise.all([loadMetadata(),loadRegions(),loadGeography(),loadRegionalAnomalies(),loadGlobalAnomalies()]);
- if(bundle.regionIds.length!==regions.length||bundle.regionIds.some((id,i)=>id!==regions[i].id)||bundle.years.length!==65)throw Error('Regional bundle ordering or dimensions are invalid.');
- const trends=createTrends(bundle);
- const map=createMap({svg:$('map'),legend:$('legend'),geography,regions,onRegionSelect:id=>store.set({selectedRegionId:id})});
- const chart=createTemporalChart({svg:$('temporal')});
- function render(s){
- const period=periodFor(s.periodMode,s.windowEndYear);
- $('period-label').textContent=`Analysis period: ${period.start}–${period.end} (${period.end-period.start+1} years)`;
- $('full-period').checked=s.periodMode==='full';$('end-year').value=s.windowEndYear;
- $('end-value').textContent=s.windowEndYear;
- for(const id of ['seasonA','seasonB']){ $(id).value=s[id];for(const option of $(id).options)option.disabled=option.value===s[id==='seasonA'?'seasonB':'seasonA']; }
- const ratesA=trends.getRates(s.seasonA,period),ratesB=trends.getRates(s.seasonB,period);
- map.update({...s,period,ratesA,ratesB,colorDomain:trends.getDomain(s.seasonA,s.seasonB)});
- const index=bundle.regionIds.indexOf(s.selectedRegionId);
- const context=index<0?'Global context':`${s.selectedRegionId} · ${regionLabel(regions[index])}`;
- $('context').textContent=context;$('clear-selection').hidden=index<0;
- const seriesA=index<0?global.anomalies[s.seasonA]:bundle.anomalies[s.seasonA][index];
- const seriesB=index<0?global.anomalies[s.seasonB]:bundle.anomalies[s.seasonB][index];
- const fits=chart.update({years:bundle.years,seriesA,seriesB,seasonA:s.seasonA,seasonB:s.seasonB,period});
- $('summary').textContent=fits.every(Boolean)?`${seasonName(s.seasonA)}: ${fits[0].rate.toFixed(4)} · ${seasonName(s.seasonB)}: ${fits[1].rate.toFixed(4)} · A − B: ${window.d3.format('+.4f')(fits[0].rate-fits[1].rate)} °C/decade`:'Insufficient observations to fit trends.';
- $('legend-caption').textContent=`Negative: ${seasonName(s.seasonB)} warms faster · Positive: ${seasonName(s.seasonA)} warms faster. Scale fixed across all periods for this pair.`;
- $('status').textContent='Ready · GFDL-ESM4 historical simulation';
- }
- for(const id of ['seasonA','seasonB'])$(id).addEventListener('change',e=>store.set({[id]:e.target.value}));
- $('full-period').addEventListener('change',e=>store.set({periodMode:e.target.checked?'full':'moving'}));
- let frame;
- $('end-year').addEventListener('input',e=>{const end=Number(e.target.value);$('end-value').textContent=end;$('period-label').textContent=`Analysis period: ${end-29}–${end} (30 years)`;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>store.set({windowEndYear:end,periodMode:'moving'}));});
- $('clear-selection').addEventListener('click',()=>store.set({selectedRegionId:null}));
- $('opacity').addEventListener('input',e=>store.set({overlayOpacity:Number(e.target.value)}));
- for(const key of ['land','ocean','coastline','selection'])$(key).addEventListener('input',e=>store.set({colors:{...store.get().colors,[key]:e.target.value}}));
- store.subscribe(render);render(store.get());
- }catch(error){$('status').textContent=`Unable to load explorer: ${error.message} Refresh to retry. Serve the site through HTTP.`;}
+import { geographyLines, summarizeAreaGeography } from './geography-context.js';
+import { selectedIndices, areaSeries } from './area-selection.js';
+import { createState } from './state.js';
+import {
+  loadMetadata,
+  loadRegions,
+  loadGeography,
+  loadRegionalAnomalies,
+  loadGlobalAnomalies,
+  loadRegionGeography,
+} from './data.js';
+import { createTrends, periodFor } from './trends.js';
+import { createMap } from './map.js';
+import { createTemporalChart } from './temporal-chart.js';
+import { seasonName } from './seasons.js';
+import { regionLabel } from './geo.js';
+const $ = (id) => document.getElementById(id);
+const store = createState({
+  seasonA: 'DJF',
+  seasonB: 'JJA',
+  periodMode: 'full',
+  windowEndYear: 2014,
+  windowYears: 30,
+  selectedRegionId: null,
+  selectedBounds: null,
+  overlayOpacity: Number($('opacity').value),
+  colors: Object.fromEntries(
+    ['land', 'ocean', 'coastline', 'selection'].map((key) => [
+      key,
+      getComputedStyle(document.documentElement).getPropertyValue(`--map-${key}`).trim(),
+    ]),
+  ),
+});
+async function init() {
+  try {
+    const [metadata, regions, geography, bundle, global, geographyById] =
+      await Promise.all([
+        loadMetadata(),
+        loadRegions(),
+        loadGeography(),
+        loadRegionalAnomalies(),
+        loadGlobalAnomalies(),
+        loadRegionGeography().catch(() => ({})),
+      ]);
+    if (
+      bundle.regionIds.length !== regions.length ||
+      bundle.regionIds.some((id, i) => id !== regions[i].id) ||
+      bundle.years.length !== 65
+    )
+      throw Error('Regional bundle ordering or dimensions are invalid.');
+    for (const [key, value] of Object.entries(store.get().colors)) $(key).value = value;
+    const trends = createTrends(bundle);
+    const map = createMap({
+      svg: $('map'),
+      legend: $('legend'),
+      geography,
+      regions,
+      geographyById,
+      onRegionSelect: (id) => store.set({ selectedRegionId: id, selectedBounds: null }),
+      onAreaSelect: (bounds) =>
+        store.set({ selectedRegionId: null, selectedBounds: bounds }),
+    });
+    const chart = createTemporalChart({ svg: $('temporal') });
+    function render(s) {
+      const period = periodFor(s.periodMode, s.windowEndYear);
+      $('period-label').textContent =
+        `Analysis period: ${period.start}–${period.end} (${period.end - period.start + 1} years)`;
+      $('full-period').checked = s.periodMode === 'full';
+      $('end-year').value = s.windowEndYear;
+      $('end-value').textContent = s.windowEndYear;
+      for (const id of ['seasonA', 'seasonB']) {
+        $(id).value = s[id];
+        for (const option of $(id).options)
+          option.disabled = option.value === s[id === 'seasonA' ? 'seasonB' : 'seasonA'];
+      }
+      const ratesA = trends.getRates(s.seasonA, period),
+        ratesB = trends.getRates(s.seasonB, period);
+      map.update({
+        ...s,
+        period,
+        ratesA,
+        ratesB,
+        colorDomain: trends.getDomain(s.seasonA, s.seasonB),
+      });
+      const index = bundle.regionIds.indexOf(s.selectedRegionId);
+      const indices = s.selectedBounds ? selectedIndices(regions, s.selectedBounds) : [];
+      const context = indices.length
+        ? `Selected area · ${indices.length} complete 5° blocks · ${regionLabel({ bounds: [s.selectedBounds.lonMin, s.selectedBounds.lonMax, s.selectedBounds.latMin, s.selectedBounds.latMax] })}`
+        : index < 0
+          ? 'Global context'
+          : `${s.selectedRegionId} · ${regionLabel(regions[index])}`;
+      $('context').textContent = context;
+      $('clear-selection').hidden = index < 0 && !indices.length;
+      const location = $('geographic-context');
+      location.replaceChildren();
+      const lines =
+        index >= 0
+          ? geographyLines(geographyById[s.selectedRegionId], regions[index].bounds)
+          : indices.length
+            ? geographyLines(
+                summarizeAreaGeography(geographyById, regions, indices, [
+                  s.selectedBounds.lonMin,
+                  s.selectedBounds.lonMax,
+                  s.selectedBounds.latMin,
+                  s.selectedBounds.latMax,
+                ]),
+                [
+                  s.selectedBounds.lonMin,
+                  s.selectedBounds.lonMax,
+                  s.selectedBounds.latMin,
+                  s.selectedBounds.latMax,
+                ],
+              ).map((line) => line.replaceAll('of block', 'of selected area'))
+            : ['Global context: area-weighted native-cell anomalies.'];
+      for (const line of lines) {
+        const p = document.createElement('p');
+        p.textContent = line;
+        location.append(p);
+      }
+      if (index >= 0) {
+        const difference = ratesA[index] - ratesB[index];
+        const ordered = regions
+          .map((r, i) => ({ id: r.id, value: ratesA[i] - ratesB[i] }))
+          .filter((r) => Number.isFinite(r.value))
+          .sort((a, b) => b.value - a.value || a.id.localeCompare(b.id));
+        const rank = ordered.findIndex((r) => r.id === s.selectedRegionId) + 1;
+        const p = document.createElement('p');
+        p.textContent = `Global signed rank ${rank} of ${ordered.length}; ${((100 * (ordered.length - rank)) / Math.max(1, ordered.length - 1)).toFixed(1)}th percentile in this period. Positive means ${seasonName(s.seasonA)} warms faster; negative means ${seasonName(s.seasonB)} warms faster.`;
+        location.append(p);
+        const rates = document.createElement('p');
+        rates.textContent =
+          metadata.seasons
+            .map(
+              (season) =>
+                `${seasonName(season)}: ${trends.getRates(season, period)[index].toFixed(4)}`,
+            )
+            .join(' · ') + ' °C/decade';
+        location.append(rates);
+      }
+      const seriesA = indices.length
+        ? areaSeries(bundle, regions, indices, s.seasonA)
+        : index < 0
+          ? global.anomalies[s.seasonA]
+          : bundle.anomalies[s.seasonA][index];
+      const seriesB = indices.length
+        ? areaSeries(bundle, regions, indices, s.seasonB)
+        : index < 0
+          ? global.anomalies[s.seasonB]
+          : bundle.anomalies[s.seasonB][index];
+      const fits = chart.update({
+        years: bundle.years,
+        seriesA,
+        seriesB,
+        seasonA: s.seasonA,
+        seasonB: s.seasonB,
+        period,
+      });
+      $('summary').textContent = fits.every(Boolean)
+        ? `${seasonName(s.seasonA)}: ${fits[0].rate.toFixed(4)} · ${seasonName(s.seasonB)}: ${fits[1].rate.toFixed(4)} · A − B: ${window.d3.format('+.4f')(fits[0].rate - fits[1].rate)} °C/decade`
+        : 'Insufficient observations to fit trends.';
+      $('legend-caption').textContent =
+        `Negative: ${seasonName(s.seasonB)} warms faster · Positive: ${seasonName(s.seasonA)} warms faster. Scale fixed across all periods for this pair.`;
+      $('status').textContent = 'Ready · GFDL-ESM4 historical simulation';
+    }
+    for (const id of ['seasonA', 'seasonB'])
+      $(id).addEventListener('change', (e) => store.set({ [id]: e.target.value }));
+    $('full-period').addEventListener('change', (e) => {
+      cancelAnimationFrame(frame);
+      store.set({ periodMode: e.target.checked ? 'full' : 'moving' });
+    });
+    let frame;
+    $('end-year').addEventListener('input', (e) => {
+      const end = Number(e.target.value);
+      $('end-value').textContent = end;
+      $('period-label').textContent = `Analysis period: ${end - 29}–${end} (30 years)`;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() =>
+        store.set({ windowEndYear: end, periodMode: 'moving' }),
+      );
+    });
+    $('clear-selection').addEventListener('click', () =>
+      store.set({ selectedRegionId: null, selectedBounds: null }),
+    );
+    $('opacity').addEventListener('input', (e) =>
+      store.set({ overlayOpacity: Number(e.target.value) }),
+    );
+    for (const key of ['land', 'ocean', 'coastline', 'selection'])
+      $(key).addEventListener('input', (e) =>
+        store.set({ colors: { ...store.get().colors, [key]: e.target.value } }),
+      );
+    $('zoom-in').addEventListener('click', () => map.zoomBy(1.5));
+    $('zoom-out').addEventListener('click', () => map.zoomBy(1 / 1.5));
+    $('zoom-reset').addEventListener('click', () => map.resetZoom());
+    store.subscribe(render);
+    render(store.get());
+  } catch (error) {
+    $('status').textContent =
+      `Unable to load explorer: ${error.message} Refresh to retry. Serve the site through HTTP.`;
+  }
 }
 init();

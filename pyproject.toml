@@ -11,4 +11,7 @@ dependencies = [
     "dask>=2026.8.0",
     "h5netcdf>=1.8.3",
     "h5py>=3.16.0",
+    "geopandas>=1.2.0",
+    "shapely>=2.2.0",
+    "pyproj>=3.8.0",
 ]
