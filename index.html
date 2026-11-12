@@ -10,69 +10,100 @@
   </head>
   <body>
     <header>
-      <a class="brand" href="./">DSC 106 PROJECT 3</a><span>GFDL-ESM4 · 1950–2014</span>
+      <a class="brand" href="./">DSC 106 PROJECT 3</a>
+      <span class="dataset-label">GFDL-ESM4 · 1950–2014</span>
     </header>
     <main>
       <section class="intro">
-        <div>
-          <p class="eyebrow">A GEOGRAPHY OF CHANGE</p>
-          <h1>Warming has a season.</h1>
-          <p class="deck">
-            Where are seasonal warming rates most uneven, and how have those differences
-            emerged over time?
-          </p>
-        </div>
+        <h1>Where and When Does Seasonal Warming Differ?</h1>
+        <p class="deck">
+          Explore geographic patterns in seasonal warming rates and how they change across historical periods, 1950–2014.
+        </p>
       </section>
       <p id="status" role="status" aria-live="polite">
         Loading regional anomaly histories and trend calculations…
       </p>
-      <section class="comparison controls">
+      <section class="comparison controls" aria-label="Shared season comparison">
         <label
-          >SEASON A<select id="seasonA">
+          >Season A<select id="seasonA">
             <option value="DJF">Winter (Dec–Feb)</option>
             <option value="MAM">Spring (Mar–May)</option>
             <option value="JJA">Summer (Jun–Aug)</option>
             <option value="SON">Fall (Sep–Nov)</option>
           </select></label
-        ><label
-          >SEASON B<select id="seasonB">
+        >
+        <span class="comparison-minus" aria-hidden="true">−</span>
+        <label
+          >Season B<select id="seasonB">
             <option value="DJF">Winter (Dec–Feb)</option>
             <option value="MAM">Spring (Mar–May)</option>
             <option value="JJA" selected>Summer (Jun–Aug)</option>
             <option value="SON">Fall (Sep–Nov)</option>
           </select></label
-        ><label
-          ><span
-            ><input id="full-period" type="checkbox" checked /> Full period
-            (1950–2014)</span
-          ></label
-        ><label class="period-slider"
-          >MOVING WINDOW END YEAR: <output id="end-value" for="end-year">2014</output
-          ><input
-            id="end-year"
-            type="range"
-            min="1979"
-            max="2014"
-            step="1"
-            value="2014"
-            aria-label="End year of 30-year analysis window"
-        /></label>
-      </section>
-      <p id="period-label" aria-live="polite">Analysis period: 1950–2014 (65 years)</p>
-      <p class="interaction-hint">
-        Move the slider to fit a 30-year window. Adjacent windows overlap; changes are not
-        independent observations. Season names use Northern Hemisphere month conventions
-        globally.
-      </p>
-      <div class="views">
-        <section class="panel">
-          <p class="eyebrow">01 / SPATIAL CONTRAST</p>
-          <h2>Where are seasonal warming rates most uneven?</h2>
-          <div class="map-toolbar">
-            <button id="zoom-in" aria-label="Zoom in">+</button
-            ><button id="zoom-out" aria-label="Zoom out">−</button
-            ><button id="zoom-reset">Reset zoom</button>
+        >
+
+        <div class="time-control shared-time-control">
+          <div class="period-heading">
+            <p id="period-label" aria-live="polite">
+              Analysis period: 1950–2014 (65 years)
+            </p>
+            <label class="full-period-control"
+              ><span
+                ><input id="full-period" type="checkbox" checked /> Full period
+                (1950–2014)</span
+              ></label
+            >
           </div>
+          <label class="period-slider"
+            ><span>Move through time · end year</span>
+            <output id="end-value" for="end-year">2014</output
+            ><input
+              id="end-year"
+              type="range"
+              min="1979"
+              max="2014"
+              step="1"
+              value="2014"
+              aria-label="End year of 30-year analysis window"
+              aria-describedby="period-label time-helper"
+              disabled
+          /></label>
+          <div class="slider-endpoints" aria-hidden="true">
+            <span id="window-first">1950–1979</span
+            ><span id="window-last">1985–2014</span>
+          </div>
+          <p id="time-helper" class="interaction-hint">
+            Move the slider to see how geographic warming contrasts change. Uncheck Full
+            period to use a 30-year window.
+          </p>
+        </div>
+      </section>
+      <nav class="exploration-guide" aria-label="How to explore">
+        <strong>Explore the data:</strong>
+        <ol>
+          <li>① <strong>Change the period</strong> — move the slider</li>
+          <li>② <strong>Select geography</strong> — click or drag on the map</li>
+          <li>③ <strong>Compare trends</strong> — inspect the linked chart</li>
+        </ol>
+      </nav>
+      <div class="views">
+        <section class="panel map-panel" aria-labelledby="map-heading">
+          <div class="view-heading">
+            <div>
+              <h2 id="map-heading">Seasonal warming-rate difference</h2>
+              <p class="chart-subtitle">
+                Where do the selected seasons warm at different rates?
+              </p>
+            </div>
+            <div class="map-toolbar" aria-label="Map zoom controls">
+              <button id="zoom-in" aria-label="Zoom in">+</button>
+              <button id="zoom-out" aria-label="Zoom out">−</button>
+              <button id="zoom-reset">Reset zoom</button>
+            </div>
+          </div>
+          <p class="interaction-hint">
+            Click a 5° region to inspect it, or drag a rectangle to select an area.
+          </p>
           <svg
             id="map"
             viewBox="0 0 960 520"
@@ -89,14 +120,18 @@
             ></svg>
           </div>
           <p id="legend-caption" class="interaction-hint"></p>
-          <p class="interaction-hint">
-            Drag outside the selected rectangle to brush a new area; drag inside it to
-            move it, or drag an edge to resize. Click outside the rectangle to inspect one
-            block. Press + to zoom toward the brushed selection. Scroll to zoom,
-            Shift-drag to pan, or use − and Reset zoom. The live brush tooltip reports
-            complete-block count and trend contrast. Brush selections cannot cross the
-            ±180° seam. Map colors compare slopes, not absolute warming or cooling.
-          </p>
+
+          <details class="map-help">
+            <summary>Map interaction help</summary>
+            <p class="interaction-hint">
+              Drag outside the selected rectangle to brush a new area; drag inside it to
+              move it, or drag an edge to resize. Click outside the rectangle to inspect
+              one block. Press + to zoom toward the brushed selection. Scroll to zoom,
+              Shift-drag to pan, or use − and Reset zoom. The live brush tooltip reports
+              complete-block count and trend contrast. Brush selections cannot cross the
+              ±180° seam. Map colors compare slopes, not absolute warming or cooling.
+            </p>
+          </details>
           <details class="appearance">
             <summary>Map appearance</summary>
             <div class="appearance-controls">
@@ -118,10 +153,29 @@
             </div>
           </details>
         </section>
-        <section class="panel">
-          <p class="eyebrow">02 / TEMPORAL CONTEXT</p>
-          <h2>How did the difference emerge over time?</h2>
-          <details open class="geographic-details">
+        <section class="panel temporal-panel" aria-labelledby="temporal-heading">
+          <div class="view-heading">
+            <div>
+              <h2 id="temporal-heading">How the difference developed</h2>
+              <p class="chart-subtitle">Seasonal temperature anomalies over time</p>
+            </div>
+          </div>
+          <div class="selection-heading">
+            <p id="context">Global overview</p>
+            <p id="context-detail" class="interaction-hint">
+              Select an area on the map to inspect its seasonal history.
+            </p>
+            <button id="clear-selection" hidden>Return to global context</button>
+          </div>
+          <svg
+            id="temporal"
+            viewBox="0 0 690 400"
+            role="img"
+            aria-label="Full seasonal anomaly histories with analysis window shading and fitted trends"
+          ></svg>
+          <p id="summary" aria-live="polite"></p>
+
+          <details class="geographic-details">
             <summary>Geographic context</summary>
             <div id="geographic-context"></div>
             <p class="interaction-hint">
@@ -131,30 +185,35 @@
               latitude bands are geometric, not climate classifications.
             </p>
           </details>
-          <p id="context">Global context</p>
-          <button id="clear-selection" hidden>Return to global context</button
-          ><svg
-            id="temporal"
-            viewBox="0 0 690 400"
-            role="img"
-            aria-label="Full seasonal anomaly histories with analysis window shading and fitted trends"
-          ></svg>
-          <p id="summary" aria-live="polite"></p>
-          <p class="interaction-hint">
-            Thin lines show seasonal anomalies across 1950–2014. Thick segments fit the
-            shaded analysis period. The target contrast is the difference in slopes, not
-            the vertical separation of the lines.
-          </p>
+          <details class="chart-help">
+            <summary>Reading the temporal chart</summary>
+            <p class="interaction-hint">
+              Thin lines show seasonal anomalies across 1950–2014. Thick segments fit the
+              shaded analysis period. The target contrast is the difference in slopes, not
+              the vertical separation of the lines.
+            </p>
+          </details>
         </section>
       </div>
       <footer>
-        <p>
-          Each map color is A − B for two fitted seasonal trends in the selected period;
-          the lines show seasonal anomalies relative to 1951–1980. Global context uses
-          cosine-latitude area weighting. Winter assigns December to the following year.
-          Geography: Natural Earth. These patterns describe change without establishing
-          causes.
-        </p>
+        <details class="methods">
+          <summary>Methods and data notes</summary>
+          <p>
+            GFDL-ESM4 historical simulation, 1950–2014. Each map color is A − B for two
+            fitted seasonal trends in the selected period; the lines show seasonal
+            anomalies relative to the 1951–1980 baseline. Global context uses
+            cosine-latitude area weighting.
+          </p>
+          <p>
+            Winter assigns December to the following year. Season names use Northern
+            Hemisphere month conventions globally. Adjacent 30-year windows overlap
+            heavily; slider-to-slider changes are not independent observations.
+          </p>
+          <p>
+            Natural Earth 1:110m geographic coverage is approximate. These modeled
+            patterns describe change without establishing causes.
+          </p>
+        </details>
       </footer>
     </main>
   </body>

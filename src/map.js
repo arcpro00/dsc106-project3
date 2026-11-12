@@ -10,7 +10,7 @@ import {
   zoomTarget,
   moveAreaBounds,
 } from './area-selection.js';
-import { seasonName } from './seasons.js';
+import { seasonName, seasonColor, seasonDifferenceScale } from './seasons.js';
 import { createTooltip } from './tooltip.js';
 const d3 = window.d3;
 export function createMap({
@@ -74,6 +74,14 @@ export function createMap({
     .datum(geography.coastlines)
     .attr('d', path);
   const outline = world.append('rect').attr('class', 'map-selected');
+  const hovered = world
+    .append('rect')
+    .attr('class', 'map-hovered')
+    .attr('display', 'none');
+  function hideHover() {
+    tooltip.hide();
+    hovered.attr('display', 'none');
+  }
   const lr = d3.select(legend);
   const gradient = lr
     .append('defs')
@@ -86,14 +94,21 @@ export function createMap({
     .attr('height', 12)
     .attr('class', 'difference-legend-ramp');
   const axis = lr.append('g').attr('transform', 'translate(0,20)');
+  const endpoints = lr.append('g').attr('class', 'legend-endpoints');
   let current;
   function showRegion(event, d) {
     if (!d) return;
     const i = regions.indexOf(d),
       s = current;
     if (!s) return;
+    hovered
+      .attr('display', null)
+      .attr('x', projection([d.bounds[0], d.bounds[3]])[0])
+      .attr('y', projection([d.bounds[0], d.bounds[3]])[1])
+      .attr('width', cells.attr('width'))
+      .attr('height', cells.attr('height'));
     tooltip.show(event, [
-      formatRegionLocation(geographyById[d.id], d.bounds),
+      `Hovered region · ${formatRegionLocation(geographyById[d.id], d.bounds)}`,
       `${d.id} · ${regionLabel(d)}`,
       summarizeLandCover(geographyById[d.id]?.land_fraction),
       `${s.period.start}–${s.period.end}`,
@@ -111,7 +126,7 @@ export function createMap({
     })
     .on('click', (_, d) => onRegionSelect(d.id))
     .on('pointermove', showRegion)
-    .on('pointerleave', () => tooltip.hide());
+    .on('pointerleave', hideHover);
   let transform = d3.zoomIdentity,
     brushing = false,
     brushStart = null,
@@ -140,7 +155,7 @@ export function createMap({
     .on('zoom', (event) => {
       transform = event.transform;
       world.attr('transform', transform);
-      tooltip.hide();
+      hideHover();
       syncBrush();
     });
   root.call(zoom);
@@ -154,6 +169,7 @@ export function createMap({
     .on('start brush end', (event) => {
       if (!event.sourceEvent) return;
       if (event.type === 'start') {
+        hideHover();
         brushing = true;
         dragBounds =
           event.mode === 'drag' || event.mode === 'space'
@@ -206,7 +222,7 @@ export function createMap({
         ]);
       }
       if (event.type === 'end') {
-        tooltip.hide();
+        hideHover();
         brushing = false;
         const end = d3.pointer(
           event.sourceEvent.changedTouches?.[0] ?? event.sourceEvent,
@@ -234,7 +250,7 @@ export function createMap({
       if (!brushing) showRegion(event, hitRegion(event));
     })
     .on('pointerleave', () => {
-      if (!brushing) tooltip.hide();
+      if (!brushing) hideHover();
     });
   function syncBrush() {
     if (brushing) return;
@@ -274,10 +290,21 @@ export function createMap({
     },
     update(s) {
       current = s;
-      tooltip.hide();
-      const color = d3
-        .scaleDiverging((t) => d3.interpolateRdBu(1 - t))
-        .domain([s.colorDomain[0], 0, s.colorDomain[1]]);
+      hideHover();
+      const color = seasonDifferenceScale(
+        d3,
+        seasonColor(s.seasonA),
+        seasonColor(s.seasonB),
+        s.colorDomain,
+      );
+      endpoints
+        .selectAll('text')
+        .data([s.seasonB, s.seasonA])
+        .join('text')
+        .attr('x', (_, i) => (i ? 380 : 20))
+        .attr('y', 53)
+        .attr('text-anchor', (_, i) => (i ? 'end' : 'start'))
+        .text((season) => `${seasonName(season)} warms faster`);
       for (const [name, value] of Object.entries(s.colors))
         root.style(`--map-${name}`, value);
       root.style('--map-overlay-opacity', s.overlayOpacity);

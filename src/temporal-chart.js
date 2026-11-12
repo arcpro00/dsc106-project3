@@ -1,5 +1,5 @@
 import { fitTrend } from './trends.js';
-import { seasonName } from './seasons.js';
+import { seasonName, seasonColor } from './seasons.js';
 const d3 = window.d3;
 export function createTemporalChart({ svg }) {
   const root = d3.select(svg);
@@ -18,6 +18,8 @@ export function createTemporalChart({ svg }) {
     .attr('class', 'temporal-axis-label');
   return {
     update({ years, seriesA, seriesB, seasonA, seasonB, period }) {
+      root.style('--series-a-color', seasonColor(seasonA));
+      root.style('--series-b-color', seasonColor(seasonB));
       const data = [
         { season: seasonA, values: seriesA },
         { season: seasonB, values: seriesB },

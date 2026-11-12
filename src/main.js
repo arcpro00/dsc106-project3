@@ -1,4 +1,8 @@
-import { geographyLines, summarizeAreaGeography } from './geography-context.js';
+import {
+  geographyLines,
+  summarizeAreaGeography,
+  formatRegionLocation,
+} from './geography-context.js';
 import { selectedIndices, areaSeries } from './area-selection.js';
 import { createState } from './state.js';
 import {
@@ -12,7 +16,7 @@ import {
 import { createTrends, periodFor } from './trends.js';
 import { createMap } from './map.js';
 import { createTemporalChart } from './temporal-chart.js';
-import { seasonName } from './seasons.js';
+import { seasonName, seasonColor } from './seasons.js';
 import { regionLabel } from './geo.js';
 const $ = (id) => document.getElementById(id);
 const store = createState({
@@ -49,6 +53,10 @@ async function init() {
     )
       throw Error('Regional bundle ordering or dimensions are invalid.');
     for (const [key, value] of Object.entries(store.get().colors)) $(key).value = value;
+    $('window-first').textContent =
+      `${bundle.years[0]}–${bundle.years[0] + store.get().windowYears - 1}`;
+    $('window-last').textContent =
+      `${bundle.years.at(-1) - store.get().windowYears + 1}–${bundle.years.at(-1)}`;
     const trends = createTrends(bundle);
     const map = createMap({
       svg: $('map'),
@@ -67,9 +75,18 @@ async function init() {
         `Analysis period: ${period.start}–${period.end} (${period.end - period.start + 1} years)`;
       $('full-period').checked = s.periodMode === 'full';
       $('end-year').value = s.windowEndYear;
+      $('end-year').disabled = s.periodMode === 'full';
+      $('end-year').setAttribute(
+        'aria-valuetext',
+        `${s.windowEndYear}; moving window ${s.windowEndYear - 29}–${s.windowEndYear}; active period ${period.start}–${period.end}`,
+      );
       $('end-value').textContent = s.windowEndYear;
       for (const id of ['seasonA', 'seasonB']) {
         $(id).value = s[id];
+        $(id).style.setProperty('--season-color', seasonColor(s[id]));
+        for (const option of $(id).options) {
+          option.style.setProperty('--option-season-color', seasonColor(option.value));
+        }
         for (const option of $(id).options)
           option.disabled = option.value === s[id === 'seasonA' ? 'seasonB' : 'seasonA'];
       }
@@ -84,12 +101,27 @@ async function init() {
       });
       const index = bundle.regionIds.indexOf(s.selectedRegionId);
       const indices = s.selectedBounds ? selectedIndices(regions, s.selectedBounds) : [];
-      const context = indices.length
-        ? `Selected area · ${indices.length} complete 5° blocks · ${regionLabel({ bounds: [s.selectedBounds.lonMin, s.selectedBounds.lonMax, s.selectedBounds.latMin, s.selectedBounds.latMax] })}`
-        : index < 0
-          ? 'Global context'
-          : `${s.selectedRegionId} · ${regionLabel(regions[index])}`;
-      $('context').textContent = context;
+      const areaBounds = s.selectedBounds
+        ? [
+            s.selectedBounds.lonMin,
+            s.selectedBounds.lonMax,
+            s.selectedBounds.latMin,
+            s.selectedBounds.latMax,
+          ]
+        : null;
+      const areaGeography = indices.length
+        ? summarizeAreaGeography(geographyById, regions, indices, areaBounds)
+        : null;
+      $('context').textContent = indices.length
+        ? `Selected area · ${formatRegionLocation(areaGeography, areaBounds)}`
+        : index >= 0
+          ? `Selected region · ${formatRegionLocation(geographyById[s.selectedRegionId], regions[index].bounds)}`
+          : 'Global overview';
+      $('context-detail').textContent = indices.length
+        ? `${indices.length} complete 5° blocks · ${regionLabel({ bounds: areaBounds })}`
+        : index >= 0
+          ? `${s.selectedRegionId} · ${regionLabel(regions[index])}`
+          : 'Select an area on the map to inspect its seasonal history.';
       $('clear-selection').hidden = index < 0 && !indices.length;
       const location = $('geographic-context');
       location.replaceChildren();
@@ -160,7 +192,7 @@ async function init() {
         : 'Insufficient observations to fit trends.';
       $('legend-caption').textContent =
         `Negative: ${seasonName(s.seasonB)} warms faster · Positive: ${seasonName(s.seasonA)} warms faster. Scale fixed across all periods for this pair.`;
-      $('status').textContent = 'Ready · GFDL-ESM4 historical simulation';
+      $('status').textContent = 'CMIP6 · GFDL-ESM4 historical simulation';
     }
     for (const id of ['seasonA', 'seasonB'])
       $(id).addEventListener('change', (e) => store.set({ [id]: e.target.value }));
