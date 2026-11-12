@@ -2,3 +2,6 @@
 *.md
 110m_physical/
 *.nc
+.venv/
+__pycache__/
+_site/
