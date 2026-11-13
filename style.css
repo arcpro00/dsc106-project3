@@ -8,8 +8,8 @@
   background: var(--page-bg);
   --page-bg: #fafaf7;
   --surface: #ffffff;
-  --text: #24332e;
-  --muted: #65716c;
+  --text: #292929;
+  --muted: #666666;
   --border: #dce1dd;
   --subtle: #f2f4f1;
   --focus: #315f78;
@@ -89,7 +89,7 @@ h2 {
   letter-spacing: -0.02em;
 }
 #status {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--muted);
   margin: 0 0 10px;
@@ -110,7 +110,7 @@ button {
   border-radius: 3px;
   background: var(--surface);
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: 14px;
 }
 select {
   max-width: 100%;
@@ -172,7 +172,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 .comparison-minus {
@@ -222,7 +222,7 @@ input[type='checkbox'] {
   min-height: 58px;
 }
 .chart-subtitle {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.5;
   margin: 4px 0 0;
@@ -256,7 +256,7 @@ input[type='checkbox'] {
   justify-content: center;
   gap: 10px;
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .legend-row svg {
@@ -266,7 +266,7 @@ input[type='checkbox'] {
   height: auto;
 }
 .legend-row text {
-  font-size: 11px;
+  font-size: 12px;
   fill: var(--muted);
 }
 .legend-row path,
@@ -274,7 +274,7 @@ input[type='checkbox'] {
   stroke: var(--border);
 }
 .interaction-hint {
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--muted);
   margin: 8px 0;
@@ -293,7 +293,7 @@ input[type='checkbox'] {
   overflow-wrap: anywhere;
 }
 #clear-selection {
-  font-size: 11px;
+  font-size: 13px;
   padding: 4px 8px;
   min-height: 34px;
   margin: 4px 0;
@@ -314,7 +314,7 @@ input[type='checkbox'] {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 6px 12px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 .period-slider output {
@@ -332,7 +332,7 @@ input[type='range'] {
 
 /* Secondary context and help stay out of the plot area. */
 details {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 summary {
@@ -362,7 +362,7 @@ summary:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .appearance-controls input[type='range'] {
   width: 90px;
@@ -386,7 +386,7 @@ footer {
 footer p {
   max-width: 1100px;
   margin: 8px 0;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -461,8 +461,8 @@ footer p {
 }
 #temporal text {
   font-family: inherit;
-  font-size: 11px;
-  fill: #526657;
+  font-size: 12px;
+  fill: var(--muted);
 }
 #temporal .legend-label.series-0 {
   fill: var(--series-a-color, var(--season-djf));
@@ -471,7 +471,7 @@ footer p {
   fill: var(--series-b-color, var(--season-jja));
 }
 #temporal .temporal-axis-label {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* Pointer-based positioning stays in JS; presentation is controlled here. */
@@ -484,7 +484,7 @@ footer p {
   padding: 10px 12px;
   border-radius: 4px;
   box-shadow: 0 3px 12px #0002;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
   max-width: min(250px, calc(100vw - 24px));
   overflow-wrap: anywhere;
@@ -517,7 +517,7 @@ footer p {
     gap: 4px 16px;
   }
   .dataset-label {
-    font-size: 11px;
+    font-size: 12px;
   }
   .panel {
     padding: 12px;
@@ -531,7 +531,7 @@ footer p {
   }
   .comparison select {
     width: 100%;
-    font-size: 12px;
+    font-size: 14px;
     padding: 7px 5px;
   }
   .full-period-control {
@@ -587,7 +587,7 @@ footer p {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -595,9 +595,9 @@ footer p {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px 12px;
-  margin: 0 0 14px;
-  font-size: 11px;
+  gap: 12px 20px;
+  margin: 4px 0 20px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--muted);
 }
@@ -608,10 +608,56 @@ footer p {
 .exploration-guide ol {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 18px;
+  gap: 12px 28px;
+  counter-reset: exploration-step;
   list-style: none;
   margin: 0;
   padding: 0;
+}
+.guide-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.exploration-guide li {
+  counter-increment: exploration-step;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+}
+.exploration-guide li::before {
+  content: counter(exploration-step) ".";
+  grid-row: 1 / 3;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+.exploration-guide li span {
+  grid-column: 2;
+  font-size: 13px;
+}
+.map-instruction {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+  margin: 10px 0 12px;
+}
+.cursor-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#time-helper,
+#context-detail {
+  font-size: 14px;
+  color: var(--text);
 }
 #context-detail {
   margin-top: 0;
@@ -646,7 +692,7 @@ footer p {
 }
 
 .legend-endpoints text {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
 }
 

@@ -79,17 +79,16 @@
             ><span id="window-last">1985–2014</span>
           </div>
           <p id="time-helper" class="interaction-hint">
-            Move the slider to see how geographic warming contrasts change. Uncheck Full
-            period to use a 30-year window.
+            Showing the full historical period. Uncheck Full period to explore 30-year windows.
           </p>
         </div>
       </section>
       <nav class="exploration-guide" aria-label="How to explore">
-        <strong>Explore the data:</strong>
+        <span class="guide-label">Explore the data</span>
         <ol>
-          <li>① <strong>Change the period</strong> — move the slider</li>
-          <li>② <strong>Select geography</strong> — click or drag on the map</li>
-          <li>③ <strong>Compare trends</strong> — inspect the linked chart</li>
+          <li><strong>Choose a period</strong><span>Use Full period or the slider.</span></li>
+          <li><strong>Select an area</strong><span>Click or drag on the map.</span></li>
+          <li><strong>Compare trends</strong><span>Inspect the linked chart.</span></li>
         </ol>
       </nav>
       <div class="views">
@@ -107,8 +106,12 @@
               <button id="zoom-reset">Reset zoom</button>
             </div>
           </div>
-          <p class="interaction-hint">
-            Click a 5° region to inspect it, or drag a rectangle to select an area.
+          <p class="interaction-hint map-instruction">
+            <svg class="cursor-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <path d="M4 2.5 15 10l-5 .8-2.5 4.7Z" />
+              <path d="m10 11 3 6" />
+            </svg>
+            <span>Click to inspect a region · Drag to select an area</span>
           </p>
           <svg
             id="map"

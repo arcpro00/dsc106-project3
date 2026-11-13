@@ -76,6 +76,10 @@ async function init() {
       $('full-period').checked = s.periodMode === 'full';
       $('end-year').value = s.windowEndYear;
       $('end-year').disabled = s.periodMode === 'full';
+      $('time-helper').textContent =
+        s.periodMode === 'full'
+          ? 'Showing the full historical period. Uncheck Full period to explore 30-year windows.'
+          : 'Move the slider to compare 30-year periods.';
       $('end-year').setAttribute(
         'aria-valuetext',
         `${s.windowEndYear}; moving window ${s.windowEndYear - 29}–${s.windowEndYear}; active period ${period.start}–${period.end}`,
